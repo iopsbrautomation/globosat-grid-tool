@@ -46,10 +46,8 @@ TEMPLATE_COLUMNS = [
     'program|weekDays|sunday', 'program|weekDays|monday',
     'program|weekDays|tuesday', 'program|weekDays|wednesday',
     'program|weekDays|thursday', 'program|weekDays|friday',
-    'program|weekDays|saturday', 'clauses1|id', 'clauses1|name',
-    'clauses1|startDate', 'clauses1|endDate', 'clauses2|id',
-    'clauses2|name', 'clauses2|startDate', 'clauses2|endDate',
-    'clauses3|id', 'clauses3|name', 'clauses3|startDate', 'clauses3|endDate'
+    'program|weekDays|saturday', 'clauses|id', 'clauses|name',
+    'clauses|startDate', 'clauses|endDate'
 ]
 
 # ==============================================================================
@@ -121,7 +119,7 @@ def criar_sidebar():
             """
         )
         st.markdown("---")
-        st.caption("Versão 1.0 - Jan/2026")
+        st.caption("Versão 1.1 - Jan/2026")
 
 def criar_footer():
     st.markdown("---")
@@ -183,16 +181,28 @@ if token:
                 raw_data = obter_grid_data(token, env_option, selected_channel, start_date, end_date)
                 
                 if raw_data:
-                    df_normalized = None
                     try:
+                        # 1. PREPARAR LISTA DE DADOS
+                        dados_para_processar = []
+                        
                         if env_option == 'Planning':
-                            all_slots = []
                             for day_schedule in raw_data:
                                 if 'slots' in day_schedule and isinstance(day_schedule['slots'], list):
-                                    all_slots.extend(day_schedule['slots'])
-                            df_normalized = pd.json_normalize(all_slots, sep='|')
+                                    dados_para_processar.extend(day_schedule['slots'])
                         else:
-                            df_normalized = pd.json_normalize(raw_data, sep='|')
+                            dados_para_processar = raw_data
+
+                        # 2. INCLUSÃO DE CLAUSES
+                        # Remove a lista e deixa apenas o primeiro objeto 'clause'
+                        for item in dados_para_processar:
+                            if 'clauses' in item and isinstance(item['clauses'], list):
+                                if len(item['clauses']) > 0:
+                                    item['clauses'] = item['clauses'][0]
+                                else:
+                                    del item['clauses']
+
+                        # 3. NORMALIZAÇÃO E EXPORTAÇÃO
+                        df_normalized = pd.json_normalize(dados_para_processar, sep='|')
                         
                         if df_normalized is not None and not df_normalized.empty:
                             df_final = df_normalized.reindex(columns=TEMPLATE_COLUMNS)
